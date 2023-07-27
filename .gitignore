@@ -6,12 +6,6 @@ __pycache__/
 # C extensions
 *.so
 
-# files
-data-00000-of-00010/
-data-00009-of-00010/
-blobCS/media/
-
-
 # Distribution / packaging
 .Python
 build/
