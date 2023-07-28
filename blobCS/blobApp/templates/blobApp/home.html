@@ -4,32 +4,32 @@
     <title>Blob Viewer</title>
 </head>
 <body>
-    <form method="post">
+    <form method="post" action="{% url 'home' %}">
         {% csrf_token %}
         <label for="blob_name">Enter Blob Name:</label>
         <input type="text" name="blob_name" id="blob_name" required>
         <button type="submit">Download</button>
     </form>
 
-    {% comment %} {% extends 'base.html' %} {% endcomment %}
+    {% if message %}
+        <div class="alert alert-success">
+            {{ message }}
+        </div>
+    {% endif %}
 
-    {% block content %}
-        <h1>Blob Viewer</h1>
-
+    {% if mentions %}
         <ul>
             {% for mention in mentions %}
                 <li>
-                    <a href="{{ mention.blob.url }}">{{ mention.mention }}</a>
-                    (position: {{ mention.position }}, wikipedia: {{ mention.wikipedia_url }})
+                    <strong>Mention:</strong> {{ mention.mention }} <br>
+                    <strong>Position:</strong> {{ mention.position }} <br>
+                    <strong>Wikipedia URL:</strong> {{ mention.wikipedia_url }} <br>
+                    <strong>Blob ID:</strong> {{ mention.blob_id }}
                 </li>
             {% endfor %}
         </ul>
-
-        {% if message %}
-            <div class="alert alert-success">
-                {{ message }}
-            </div>
-        {% endif %}
-    {% endblock %}
+    {% else %}
+        <p>No mentions available.</p>
+    {% endif %}
 </body>
 </html>
