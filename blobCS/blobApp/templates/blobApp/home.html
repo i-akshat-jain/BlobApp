@@ -1,35 +1,118 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-    <title>Blob Viewer</title>
+  <title>Mentions</title>
+
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'styles.css' %}">
+
 </head>
+
 <body>
-    <form method="post" action="{% url 'home' %}">
-        {% csrf_token %}
-        <label for="blob_name">Enter Blob Name:</label>
-        <input type="text" name="blob_name" id="blob_name" required>
-        <button type="submit">Download</button>
-    </form>
+ <form method="post" action="{% url 'home' %}">
+    {% csrf_token %}
+    <label for="blob_name">Enter Blob Name:</label>
+    <input type="text" name="blob_name" id="blob_name" required>
+    <button type="submit">Submit</button>
+  </form>
+  {% if mentions %}
 
-    {% if message %}
-        <div class="alert alert-success">
-            {{ message }}
-        </div>
+    <div class="mentions-table-container">
+
+      <table class="mentions-table">
+        <thead>
+          <tr>
+            <th>Mention</th>
+            <th>Position</th>
+            <th>Wikipedia URL</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for mention in mentions %}
+            <tr>
+              <td>{{ mention.mention }}</td>
+              <td>{{ mention.position }}</td>
+              <td>{{ mention.wikipedia_url }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+    </div>
+
+    {% if page.has_next %}
+      <button id="load-more-btn" onclick="loadMore()">Load More</button>
     {% endif %}
 
-    {% if mentions %}
-        <ul>
-            {% for mention in mentions %}
-                <li>
-                    <strong>Mention:</strong> {{ mention.mention }} <br>
-                    <strong>Position:</strong> {{ mention.position }} <br>
-                    <strong>Wikipedia URL:</strong> {{ mention.wikipedia_url }} <br>
-                    <strong>Blob ID:</strong> {{ mention.blob_id }}
-                </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>No mentions available.</p>
-    {% endif %}
+  {% endif %}
+
+  <div id="loader" style="display: none;">
+    <div class="spinner-border"></div>
+  </div>
+
+  <script>
+
+    let page = 1;
+    let loading = false;
+
+    async function loadMore() {
+
+      try {
+
+        document.getElementById('load-more-btn').disabled = true;
+        
+        loading = true;
+        toggleLoader(true);
+
+        const response = await fetch(`/api/mentions/?page=${page}`);
+        const data = await response.json();
+
+        toggleLoader(false);
+        loading = false;
+
+        if (!response.ok) {
+          throw new Error('Fetch failed');
+        }
+
+        data.mentions.forEach(mention => {
+
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${mention.mention}</td>  
+            <td>${mention.position}</td>
+            <td>${mention.wikipedia_url}</td>
+          `;
+
+          document.querySelector('tbody').appendChild(row);
+
+        });
+
+        page++;
+
+        if (!data.has_next_page) {
+          document.getElementById('load-more-btn').style.display = 'none';
+        }
+
+      } catch (error) {
+        console.error(error);
+        alert('Error loading mentions');
+      } finally {
+        document.getElementById('load-more-btn').disabled = false;
+      }
+
+    }
+
+    function toggleLoader(display) {
+      let loader = document.getElementById('loader');
+      if (display) {
+        loader.style.display = 'block';
+      } else {
+        loader.style.display = 'none';
+      }
+    }
+
+  </script>
+
 </body>
 </html>
