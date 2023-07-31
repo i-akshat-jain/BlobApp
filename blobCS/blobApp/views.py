@@ -9,77 +9,83 @@ from io import BytesIO
 from azure.storage.blob import BlobServiceClient as bs
 from django.db.models import Q
 import requests
-from django.conf import settings
 import threading
 from django.core.paginator import Paginator
+from django.middleware.csrf import get_token
+from django.views.decorators.csrf import csrf_exempt
+
 
 def get_data_and_save(blob_name, start=None, end=None, mention_id=1):
     account_url = "https://invenicscasestudy.blob.core.windows.net/"
     container_name = "wiki"
-    # clear all previous records form the mention and blob table
+    # clear all previous records form the mention table
     if mention_id == 1:
         m.objects.all().delete()
-
     blob_name = blob_name+'.gz'
     try:
         # Get data from Azure Blob Storage and save to database
         blob_service_client = bs(account_url=account_url)
-        global container_client
         container_client = blob_service_client.get_container_client(
             container_name)
         # Convert blob_list to a list to access the blobs
         blob_list = list(container_client.list_blobs())
 
-        # blob_list = container_client.list_blobs()
-        # mention_id = 1
         idForBlobTable = 0
         # blob_list = list(blob_list)
         for blob in blob_list:
             if blob.name == blob_name:
-                print(blob.name, idForBlobTable)
-                global found_blob
-                found_blob = blob
+                # print(blob.name, idForBlobTable)
                 blob_client = container_client.get_blob_client(blob)
                 blob_contents = blob_client.download_blob()
 
-                # Uncompress the data
+                # Unzip the data and get the length of the data
                 compressed_data = BytesIO(blob_contents.content_as_bytes())
                 unzipped_data = gzip.GzipFile(fileobj=compressed_data).read()
-                # Set a range to read the compressed data to just 3000 lines
+                data_length = len(unzipped_data)
+                
+                # Get the data in the range specified by the user
+                start = 0 if start is None or start < 0 else min(
+                    start, data_length)
+                end = data_length if end is None or end > data_length else max(
+                    end, 0)
+                
+                
                 unzipped_range_data = unzipped_data[start:end]
-
+                # Convert the data to bytes
                 byte_file = BytesIO(unzipped_range_data)
 
                 if b.objects.filter(blob=blob.name).exists():
-                    print("object exists")
+                    # print("blob_obj exists")
                     blob_obj = b.objects.get(blob=blob.name)
-                    # blob_id = blob_obj.id
+
                 else:
-                    # idForBlobTable += 1
                     blob_obj = b.objects.create(id=idForBlobTable, blob=blob.name, date=date.today(
                     ), time=datetime.datetime.now().time())
+                    
                 mentionObject = []
-                rank = 1
-
+                count = 1
+                # Read the data line by line
                 for line in byte_file:
                     fields = line.decode('utf-8').strip().split('\t')
-                    if fields[0] == 'MENTION':
+                    # Check if the line is a mention or not
+                    if len(fields) >= 4 and fields[0] == 'MENTION':
                         mention = fields[1]
                         position = fields[2]
                         wiki_url = fields[3]
                         mentionObject.append(
                             m(id=mention_id, blob_id=blob_obj, mention=mention, position=position, wikipedia_url=wiki_url))
 
-                        # Create bulk insert having 3000 records each time
-                        if rank % 5000 == 0:
-                            # Save the first 2000 mentions to the database
-                            print("bulk insert", rank, mention_id)
+                        # Create and save bulk insert having 5000 records each time
+                        if count % 5000 == 0:
                             m.objects.bulk_create(mentionObject)
                             mentionObject = []
 
                         mention_id += 1
-                        rank += 1
-                # to save the last list of leftover objectsz
+                        count += 1
+                    else:
+                        continue
+                    
+                # To save the last list of leftover objectsz
                 if mentionObject:
                     m.objects.bulk_create(mentionObject)
 
@@ -92,34 +98,40 @@ def get_data_and_save(blob_name, start=None, end=None, mention_id=1):
 
     return mention_id
 
-
+# Function to send the data to frontend
 def mention_list(request):
-    
-  mentions = m.objects.all()
-  
-  # Paginate mentions
-  paginator = Paginator(mentions, 100)
-  page_num = request.GET.get('page', 1)
-  page = paginator.get_page(page_num)
 
-  data = {
-    'mentions': [serialize(m) for m in page], 
-    'has_next_page': page.has_next()
-  }
+    search_term = request.GET.get('search_term')
+    mentions = m.objects.order_by('id')
 
-  return JsonResponse(data)
+    if search_term:
+        # Filter mentions by search term
+        mentions = mentions.filter(Q(mention__icontains=search_term) | Q(
+            position__icontains=search_term) | Q(wikipedia_url__icontains=search_term))
+    # Paginate mentions
+    paginator = Paginator(mentions, 50)
+    page_num = request.GET.get('page', 1)
+    page = paginator.get_page(page_num)
 
+    data = {
+        'mentions': [serialize(m) for m in page],
+        'has_next_page': page.has_next()
+    }
+
+    return JsonResponse(data)
+
+# Function to send the data to frontend in a serialized form
 def serialize(mention):
-  return {
-    'mention': mention.mention,
-    'position': mention.position,
-    'wikipedia_url': mention.wikipedia_url,
-  }
+    return {
+        'mention': mention.mention,
+        'position': mention.position,
+        'wikipedia_url': mention.wikipedia_url,
+    }
 
-
-
+# Function to get BlobName from frontend and call the get_data_and_save function
 def home(request):
     context = {}
+    success = 1  # Initialize success here
     if request.method == 'POST':
         blob_name = request.POST.get('blob_name')
         if blob_name:
@@ -139,14 +151,44 @@ def home(request):
     except requests.RequestException:
         context['message'] = 'Failed to fetch data from the API.'
 
-    # Load the remaining mentions in the background
+    # Load the remaining mentions in the background using Threads
     if request.method == 'POST':
         blob_name = request.POST.get('blob_name')
         if blob_name:
-            threading.Thread(target=get_data_and_save, args=(
-                blob_name, 100000, None, success+1,)).start()
-
+            # Start background thread
+            threading.Thread(target=threaded_func, args=(
+                blob_name, request, 100000, None, success+1,)).start()
     return render(request, 'blobApp/home.html', context)
 
+# Intiating the background thread
+def threaded_func(blob_name, request, start, end, mention_id):
+    try:
+        get_data_and_save(blob_name, start, end, mention_id)
+        notify_done(request)
+    except Exception as e:
 
-   
+
+# Function to notify the server that the background thread has finished processing the data 
+def notify_done(request):
+    url = request.build_absolute_uri('/done/')
+    requests.post(url)
+
+# Function to notify Done to the server
+def done(request):
+    """
+    This endpoint is used to notify the server that the background
+    thread has finished processing the data.
+    """
+    if request.method == 'POST':
+        # Get the CSRF token from the request
+        csrf_token = get_token(request)
+
+        # Check the CSRF token
+        if csrf_token == '':
+            # The CSRF token is not valid
+            raise ValueError('CSRF token is not valid')
+
+        return JsonResponse({'done': True})
+    else:
+        # Return 405 Method Not Allowed for GET requests
+        return HttpResponseNotAllowed(['POST'])

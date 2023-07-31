@@ -1,118 +1,341 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-  <title>Mentions</title>
+    <title>Blob Viewer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+         body {
+            font-family: Arial, sans-serif;
+            background-color: #0A121B; 
+            padding: 20px;
+            background-size: cover;
+            background-repeat: no-repeat;
+        }
+        #background-image {
+                position: absolute;
+                right: 0;
+                top: 0;
+                width: 25%;
+                height: 100%;
+                background-color: #0A121B;
+            }
+        .form-container {
+            margin-bottom: 20px;
+        }
 
-  {% load static %}
-  <link rel="stylesheet" href="{% static 'styles.css' %}">
+        .container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
 
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .load-more-btn {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .load-more-btn:hover {
+            background-color: #45a049;
+        }
+    
+
+
+        .loading-icon {
+            display: none;
+        }
+
+        .loading-icon.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .alert {
+            margin-top: 20px;
+        }
+        header {
+            background-color: #0A121B;
+            padding: 30px;
+            color: white;
+            text-align: right;
+        }
+
+        header img {
+            width: 190px;
+            height: auto;
+            float: left;
+            margin-right: 20px;
+        }
+
+        header a {
+            color: white;
+            text-decoration: none;
+            font-size: 20px;
+            margin: 0 10px;
+        }
+
+        header a:hover {
+            color: #42B821;
+        }
+    </style>
 </head>
-
 <body>
- <form method="post" action="{% url 'home' %}">
-    {% csrf_token %}
-    <label for="blob_name">Enter Blob Name:</label>
-    <input type="text" name="blob_name" id="blob_name" required>
-    <button type="submit">Submit</button>
-  </form>
-  {% if mentions %}
+    <header>
+    <a href="https://www.invenics.com" title="Invenics">
+							
+		<img src="https://www.invenics.com/wp-content/themes/Netstager_Creative_Suite-3.0/assets/images/invenics.png" alt="Invenics">
+						</a>
+    <a href="https://www.invenics.com/about/">About</a>
+    <a href="https://www.invenics.com/contact/">Contact</a>
+</header>
+{% comment %} <div id="background-image">
+    <img src="https://e1.pxfuel.com/desktop-wallpaper/131/244/desktop-wallpaper-2c2p-case-study-amazon-web-services-amazon-web-services.jpg" alt="Background image">
+</div> {% endcomment %}
+     <div class="container">
+        <div class="row form-container">
+          <form method="post" action="{% url 'home' %}">
+            {% csrf_token %}
+              <div class="col-md-8 mb-3">
+                  <label for="blob_name" class="form-label">Enter Blob Name:</label>
+                  <input type="text" class="form-control" id="blob_name" name="blob_name" required>
+              </div>
+              <div class="col-md-4">
+                <button id="download-btn" type="submit" class="btn btn-primary"> Submit  
+            </button>
+              </div>
+            </form>
+        </div>
+        <div class="form-container">
+            <label for="search-mention" class="form-label">Search Mention:</label>
+            <input type="text" class="form-control" id="search-mention">
+            
+        </div>
 
-    <div class="mentions-table-container">
+        <div class="alert alert-success d-none" id="success-message"></div>
+        <div id="loading" style="display: none;" class="text-center">
+             <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div id="loading-text" class="mt-2" style="color: white;">Loading...</div>
+        </div>
+        <div id="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Mention</th>
+                        <th>Position</th>
+                        <th>Wikipedia URL</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    <!-- Table rows will be dynamically populated here -->
+                </tbody>
+            </table>
 
-      <table class="mentions-table">
-        <thead>
-          <tr>
-            <th>Mention</th>
-            <th>Position</th>
-            <th>Wikipedia URL</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for mention in mentions %}
-            <tr>
-              <td>{{ mention.mention }}</td>
-              <td>{{ mention.position }}</td>
-              <td>{{ mention.wikipedia_url }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-
+            <div class="text-center">
+                <button class="btn btn-primary load-more-btn" id="load-more-btn">Load More</button>
+                <div class="loading-icon" id="loading-icon">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
     </div>
 
-    {% if page.has_next %}
-      <button id="load-more-btn" onclick="loadMore()">Load More</button>
-    {% endif %}
+    <script>
+        $(document).ready(function() {
+            let page = 1;
 
-  {% endif %}
+            function loadMentions() {
+                const blobName = $("#blob_name").val();
+                const url = `/api/mention/?blob_name=${blobName}&page=${page}&limit=50`;
 
-  <div id="loader" style="display: none;">
-    <div class="spinner-border"></div>
-  </div>
+                $.ajax({
+                    url: url,
+                    method: "GET",
+                    beforeSend: function() {
+                        $("#loading-icon").addClass("show");
+                    },
+                    success: function(data) {
+                        const mentions = data.mentions;
 
-  <script>
+                        if (mentions.length === 0) {
+                            $("#table-container").hide();
+                            $("#success-message").text("No mentions found.").addClass("d-block");
+                        } else {
+                            $("#success-message").removeClass("d-block");
+                            const tableBody = $("#table-body");
+                            mentions.forEach(mention => {
+                                const row = `
+                                    <tr>
+                                        <td>${mention.mention}</td>
+                                        <td>${mention.position}</td>
+                                        <td>${mention.wikipedia_url}</td>
+                                    </tr>
+                                `;
+                                tableBody.append(row);
+                            });
 
-    let page = 1;
-    let loading = false;
+                            if (data.has_next_page) {
+                                page++;
+                                $("#load-more-btn").show();
+                            } else {
+                                $("#load-more-btn").hide();
+                            }
+                        }
+                    },
+                    complete: function() {
+                        $("#loading-icon").removeClass("show");
+                    },
+                    error: function() {
+                        $("#table-container").hide();
+                        $("#success-message").text("Failed to fetch data from the API.").addClass("d-block");
+                    }
+                });
+            }
 
-    async function loadMore() {
-
-      try {
-
-        document.getElementById('load-more-btn').disabled = true;
-        
-        loading = true;
-        toggleLoader(true);
-
-        const response = await fetch(`/api/mentions/?page=${page}`);
-        const data = await response.json();
-
-        toggleLoader(false);
-        loading = false;
-
-        if (!response.ok) {
-          throw new Error('Fetch failed');
-        }
-
-        data.mentions.forEach(mention => {
-
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${mention.mention}</td>  
-            <td>${mention.position}</td>
-            <td>${mention.wikipedia_url}</td>
-          `;
-
-          document.querySelector('tbody').appendChild(row);
-
+            function notifyDone() {
+                $.ajax({
+                    url: '/done/',
+                    type: 'POST',  // Change to POST request
+                    beforeSend: function(xhr, settings) {
+                        // Set the CSRF token in the request headers
+                        xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+                    },
+                    success: function(data) {
+                        console.log('Background processing done:', data);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error notifying done:', error);
+                    }
+                });
+            }
+            $("#search-btn").click(function() {
+            const searchTerm = $("#search-mention").val().toLowerCase();
+            searchMentions(searchTerm);
         });
+        // Function to search for mentions based on the search term
+        function searchMentions(searchTerm) {
+            const url = `/api/mention/?search_term=${searchTerm}&page=1&limit=50`;
 
-        page++;
+            $.ajax({
+                url: url,
+                method: "GET",
+                beforeSend: function() {
+                    $("#loading-icon").addClass("show");
+                },
+                success: function(data) {
+                    const mentions = data.mentions;
 
-        if (!data.has_next_page) {
-          document.getElementById('load-more-btn').style.display = 'none';
+                    if (mentions.length === 0) {
+                        $("#table-container").hide();
+                        $("#success-message").text("No mentions found.").addClass("d-block");
+                    } else {
+                        $("#success-message").removeClass("d-block");
+                        const tableBody = $("#table-body");
+                        tableBody.empty(); // Clear existing table rows
+                        mentions.forEach(mention => {
+                            const row = `
+                                <tr>
+                                    <td>${mention.mention}</td>
+                                    <td>${mention.position}</td>
+                                    <td>${mention.wikipedia_url}</td>
+                                </tr>
+                            `;
+                            tableBody.append(row);
+                        });
+
+                        if (data.has_next_page) {
+                            page = 2; // Set page to 2 to enable "Load More" functionality after search
+                            $("#load-more-btn").show();
+                        } else {
+                            $("#load-more-btn").hide();
+                        }
+                    }
+                },
+                complete: function() {
+                    $("#loading-icon").removeClass("show");
+                },
+                error: function() {
+                    $("#table-container").hide();
+                    $("#success-message").text("Failed to fetch data from the API.").addClass("d-block");
+                }
+            });
         }
 
-      } catch (error) {
-        console.error(error);
-        alert('Error loading mentions');
-      } finally {
-        document.getElementById('load-more-btn').disabled = false;
-      }
+            $("#download-btn").click(function(e) {
+                page = 1; // Reset page when a new blob name is entered
+                $("#table-body").empty();
+                $("#table-container").show();
+                $("#success-message").removeClass("d-block");
+                $("#loading").show();
+                loadMentions();
+                notifyDone();
+                // Hide loading icon when data is loaded
+                $("#loading-icon").on("ajaxComplete", function() {
+                    $(this).removeClass("show");
+                });
+            });
 
-    }
+            $("#search-mention").on("input", function() {
+                const searchTerm = $(this).val().toLowerCase();
+                $.ajax({
+                    url: "/api/mention/",
+                    method: "GET",
+                    data: {
+                    search_term: searchTerm,
+                    },
+                    success: function(data) {
+                    const mentions = data.mentions;
+                    $("#table-body").empty();
+                    mentions.forEach(mention => {
+                        const row = `
+                        <tr>
+                            <td>${mention.mention}</td>
+                            <td>${mention.position}</td>
+                            <td>${mention.wikipedia_url}</td>
+                        </tr>
+                        `;
+                        $("#table-body").append(row);
+                    });
+                    },
+                    error: function() {
+                        console.log("Error fetching mentions");
+                    },
+                });
+            });
 
-    function toggleLoader(display) {
-      let loader = document.getElementById('loader');
-      if (display) {
-        loader.style.display = 'block';
-      } else {
-        loader.style.display = 'none';
-      }
-    }
-
-  </script>
-
+            $("#load-more-btn").click(function() {
+                loadMentions();
+            });
+        });
+    </script>
 </body>
 </html>
+
