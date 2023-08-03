@@ -1,0 +1,69 @@
+@startuml
+
+class Blob {
+  - id: integer 
+  - blob: string
+  - date: date
+  - time: time
+  
+  + __str__()
+}
+
+class Mention {
+  - id: integer
+  - blob_id: Blob 
+  - mention: string
+  - position: integer
+  - wikipedia_url: string
+
+  + __str__()
+}
+
+class views {
+  + home()
+    - Get blob name
+    - Call get_data_and_save()
+    - Start background thread
+    - Render template
+
+  + mention_list()
+    - Filter mentions by search
+    - Paginate mentions
+    - Serialize and return as JSON
+    
+  + done()
+    - Handle thread done notification  
+} 
+
+class urls {
+  + urlpatterns
+    - Path mappings
+      - Home view
+      - Mention API view
+      - Done view
+}
+
+class threading {
+  + threaded_func()
+    - Call get_data_and_save()
+    - Call notify_done()
+    
++ get_data_and_save()
+  - Get blob from Azure
+  - Parse data
+  - Save mentions to db
+  
++ notify_done()
+  - POST to /done/ endpoint
+}
+
+views ..> Blob
+views ..> Mention
+
+Blob "1" -- "*" Mention
+
+urls ..> views
+
+views ..> threading
+
+@enduml

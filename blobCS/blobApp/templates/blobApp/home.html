@@ -61,8 +61,6 @@
         .load-more-btn:hover {
             background-color: #45a049;
         }
-    
-
 
         .loading-icon {
             display: none;
@@ -73,6 +71,11 @@
             align-items: center;
             justify-content: center;
         }
+        #loading-text {
+            color: #0A121B;
+            font-size: 16px;
+            font-weight: bold;
+        }
 
         .alert {
             margin-top: 20px;
@@ -82,6 +85,7 @@
             padding: 30px;
             color: white;
             text-align: right;
+            margin-bottom: 20px;
         }
 
         header img {
@@ -112,9 +116,7 @@
     <a href="https://www.invenics.com/about/">About</a>
     <a href="https://www.invenics.com/contact/">Contact</a>
 </header>
-{% comment %} <div id="background-image">
-    <img src="https://e1.pxfuel.com/desktop-wallpaper/131/244/desktop-wallpaper-2c2p-case-study-amazon-web-services-amazon-web-services.jpg" alt="Background image">
-</div> {% endcomment %}
+
      <div class="container">
         <div class="row form-container">
           <form method="post" action="{% url 'home' %}">
@@ -137,10 +139,10 @@
 
         <div class="alert alert-success d-none" id="success-message"></div>
         <div id="loading" style="display: none;" class="text-center">
-             <div class="spinner-border" role="status">
+             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
-            <div id="loading-text" class="mt-2" style="color: white;">Loading...</div>
+            <div id="loading-text" class="mt-2">Data Loading...</div>
         </div>
         <div id="table-container">
             <table class="table">
@@ -152,7 +154,6 @@
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    <!-- Table rows will be dynamically populated here -->
                 </tbody>
             </table>
 
@@ -162,6 +163,7 @@
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
+                    <div id="loading-text" class="mt-2">Loading...</div>
                 </div>
             </div>
         </div>
@@ -171,7 +173,6 @@
     <script>
         $(document).ready(function() {
             let page = 1;
-
             function loadMentions() {
                 const blobName = $("#blob_name").val();
                 const url = `/api/mention/?blob_name=${blobName}&page=${page}&limit=50`;
@@ -201,7 +202,6 @@
                                 `;
                                 tableBody.append(row);
                             });
-
                             if (data.has_next_page) {
                                 page++;
                                 $("#load-more-btn").show();
@@ -219,27 +219,46 @@
                     }
                 });
             }
-
-            function notifyDone() {
-                $.ajax({
-                    url: '/done/',
-                    type: 'POST',  // Change to POST request
-                    beforeSend: function(xhr, settings) {
-                        // Set the CSRF token in the request headers
-                        xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
-                    },
-                    success: function(data) {
-                        console.log('Background processing done:', data);
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Error notifying done:', error);
-                    }
-                });
-            }
+            loadMentions();
+            
             $("#search-btn").click(function() {
             const searchTerm = $("#search-mention").val().toLowerCase();
             searchMentions(searchTerm);
         });
+        function notifyDone() {
+            $.ajax({
+                url: '/done/',
+                type: 'POST',
+                //beforeSend: function(xhr, settings) {
+                //    // Set the CSRF token in the request headers
+                //    xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
+                //},
+                success: function(data) {
+                    alert("Background processing done");
+                    console.log('Background processing done:', data);
+                },
+                error: function(status, error) {
+                    console.error('Error notifying done:', error);
+                }
+            });
+        }
+            //function getCookie(cokkie) {
+            //    let cookieValue = null;
+            //    if (document.cookie && document.cookie !== '') {
+            //        const cookies = document.cookie.split(';');
+             //       for (let i = 0; i < cookies.length; i++) {
+             //           const cookie = cookies[i].trim();
+             //           // Does this cookie string begin with the cokkie we want?
+             //           if (cookie.substring(0, cokkie.length + 1) === (cokkie + '=')) {
+             //               cookieValue = decodeURIComponent(cookie.substring(cokkie.length + 1));
+            //                break;
+             //           }
+            //        }
+            //    }
+            //    return cookieValue;
+            //} 
+
+
         // Function to search for mentions based on the search term
         function searchMentions(searchTerm) {
             const url = `/api/mention/?search_term=${searchTerm}&page=1&limit=50`;
@@ -296,11 +315,11 @@
                 $("#success-message").removeClass("d-block");
                 $("#loading").show();
                 loadMentions();
-                notifyDone();
                 // Hide loading icon when data is loaded
                 $("#loading-icon").on("ajaxComplete", function() {
                     $(this).removeClass("show");
                 });
+                notifyDone()
             });
 
             $("#search-mention").on("input", function() {
