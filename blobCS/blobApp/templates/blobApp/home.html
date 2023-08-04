@@ -33,7 +33,10 @@
 
         table {
             width: 100%;
+            max-width: 100%;
+            margin-bottom: 1rem;
             border-collapse: collapse;
+
         }
 
         th, td {
@@ -41,6 +44,12 @@
             padding: 8px;
             text-align: left;
         }
+        table td {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
 
         th {
             background-color: #f2f2f2;
@@ -172,8 +181,10 @@
     <script>
         $(document).ready(function() {
             let page = 1;
+            // Load mentions on page load
             function loadMentions() {
                 const blobName = $("#blob_name").val();
+                // calling api to get mentions  of the blob
                 const url = `/api/mention/?blob_name=${blobName}&page=${page}&limit=50`;
 
                 $.ajax({
@@ -227,6 +238,7 @@
         });
 
         function searchMentions(searchTerm) {
+            // calling api to search mentions  of the blob
             const url = `/api/mention/?search_term=${searchTerm}&page=1&limit=50`;
 
             $.ajax({
@@ -244,7 +256,7 @@
                     } else {
                         $("#success-message").removeClass("d-block");
                         const tableBody = $("#table-body");
-                        tableBody.empty(); // Clear existing table rows
+                        tableBody.empty();
                         mentions.forEach(mention => {
                             const row = `
                                 <tr>
@@ -257,7 +269,7 @@
                         });
 
                         if (data.has_next_page) {
-                            page = 2; // Set page to 2 to enable "Load More" functionality after search
+                            page = 2; 
                             $("#load-more-btn").show();
                         } else {
                             $("#load-more-btn").hide();
@@ -274,18 +286,18 @@
             });
         }
             $("#download-btn").click(function(e) {
-                page = 1; // Reset page when a new blob name is entered
+                page = 1;
                 $("#table-body").empty();
                 $("#table-container").show();
                 $("#success-message").removeClass("d-block");
                 $("#loading").show();
                 loadMentions();
-                // Hide loading icon when data is loaded
                 $("#loading-icon").on("ajaxComplete", function() {
                     $(this).removeClass("show");
                 });    
             });
-
+            
+                        
             $("#search-mention").on("input", function() {
                 const searchTerm = $(this).val().toLowerCase();
                 $.ajax({
