@@ -11,10 +11,7 @@ from django.db.models import Q
 import requests
 import threading
 from django.core.paginator import Paginator
-from django.middleware.csrf import get_token
-from django.views.decorators.csrf import csrf_exempt
-
-
+from django.contrib import messages
 
 def get_data_and_save(blob_name, start=None, end=None, mention_id=1):
     account_url = "https://invenicscasestudy.blob.core.windows.net/"
@@ -89,6 +86,7 @@ def get_data_and_save(blob_name, start=None, end=None, mention_id=1):
                 # To save the last list of leftover objectsz
                 if mentionObject:
                     m.objects.bulk_create(mentionObject)
+                    print("bulk created")
 
             else:
                 print("blob not found")
@@ -104,6 +102,7 @@ def mention_list(request):
 
     search_term = request.GET.get('search_term')
     mentions = m.objects.order_by('id')
+    blobs = b.objects.all()
 
     if search_term:
         # Filter mentions by search term
@@ -158,41 +157,13 @@ def home(request):
         if blob_name:
             # Start background thread
             threading.Thread(target=threaded_func, args=(
-                blob_name,request, 100000, None, success+1,)).start()
+                blob_name, 100000, None, success+1,)).start()
     return render(request, 'blobApp/home.html', context)
 
 # Intiating the background thread
-def threaded_func(blob_name,request, start, end, mention_id):
+def threaded_func(blob_name,start, end, mention_id):
     try:
         get_data_and_save(blob_name, start, end, mention_id)
-        notify_done(request)
     except Exception as e:
         print(e)
 
-
-# Function to notify the server that the background thread has finished processing the data 
-def notify_done(request):
-    url = request.build_absolute_uri('/done/')
-    print(url)
-    requests.post(url)
-
-# Function to notify Done to the server
-def done():
-    """
-    This endpoint is used to notify the server that the background
-    thread has finished processing the data.
-    """
-    return JsonResponse({'done': True})
-    # if request.method == 'POST':
-    #     # Get the CSRF token from the request
-    #     csrf_token = get_token(request)
-
-    #     # Check the CSRF token
-    #     if csrf_token == '':
-    #         # The CSRF token is not valid
-    #         raise ValueError('CSRF token is not valid')
-
-        
-    # else:
-    #     # Return 405 Method Not Allowed for GET requests
-    #     return HttpResponseNotAllowed(['POST'])

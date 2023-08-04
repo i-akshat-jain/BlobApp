@@ -169,7 +169,6 @@
         </div>
         
     </div>
-
     <script>
         $(document).ready(function() {
             let page = 1;
@@ -218,6 +217,7 @@
                         $("#success-message").text("Failed to fetch data from the API.").addClass("d-block");
                     }
                 });
+
             }
             loadMentions();
             
@@ -225,41 +225,7 @@
             const searchTerm = $("#search-mention").val().toLowerCase();
             searchMentions(searchTerm);
         });
-        function notifyDone() {
-            $.ajax({
-                url: '/done/',
-                type: 'POST',
-                //beforeSend: function(xhr, settings) {
-                //    // Set the CSRF token in the request headers
-                //    xhr.setRequestHeader('X-CSRFToken', getCookie('csrftoken'));
-                //},
-                success: function(data) {
-                    alert("Background processing done");
-                    console.log('Background processing done:', data);
-                },
-                error: function(status, error) {
-                    console.error('Error notifying done:', error);
-                }
-            });
-        }
-            //function getCookie(cokkie) {
-            //    let cookieValue = null;
-            //    if (document.cookie && document.cookie !== '') {
-            //        const cookies = document.cookie.split(';');
-             //       for (let i = 0; i < cookies.length; i++) {
-             //           const cookie = cookies[i].trim();
-             //           // Does this cookie string begin with the cokkie we want?
-             //           if (cookie.substring(0, cokkie.length + 1) === (cokkie + '=')) {
-             //               cookieValue = decodeURIComponent(cookie.substring(cokkie.length + 1));
-            //                break;
-             //           }
-            //        }
-            //    }
-            //    return cookieValue;
-            //} 
 
-
-        // Function to search for mentions based on the search term
         function searchMentions(searchTerm) {
             const url = `/api/mention/?search_term=${searchTerm}&page=1&limit=50`;
 
@@ -307,7 +273,6 @@
                 }
             });
         }
-
             $("#download-btn").click(function(e) {
                 page = 1; // Reset page when a new blob name is entered
                 $("#table-body").empty();
@@ -318,8 +283,7 @@
                 // Hide loading icon when data is loaded
                 $("#loading-icon").on("ajaxComplete", function() {
                     $(this).removeClass("show");
-                });
-                notifyDone()
+                });    
             });
 
             $("#search-mention").on("input", function() {
@@ -355,6 +319,7 @@
             });
         });
     </script>
+    
 </body>
 </html>
 
